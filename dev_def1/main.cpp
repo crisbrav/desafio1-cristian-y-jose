@@ -1,94 +1,55 @@
 #include <iostream>
-#include <fstream>
 using namespace std;
-
-void* my_memcpy(void* dst, const void* src, unsigned long n) {
-    unsigned char* d = (unsigned char*)dst;
-    const unsigned char* s = (const unsigned char*)src;
-    for (unsigned long i = 0; i < n; ++i) d[i] = s[i];
-    return dst;
-}
-
-unsigned char ror8(unsigned char v, int r) {
-    r &= 7; // 0..7
-    return (unsigned char)((v >> r) | (v << (8 - r)));
-}
-unsigned char rol8(unsigned char v, int r) {
-    r &= 7;
-    return (unsigned char)((v << r) | (v >> (8 - r)));
-}
-
-unsigned char* try_decrypt(const unsigned char* enc, unsigned long size, int rot_n, unsigned char K) {
-    if (!enc || size == 0) return nullptr;
-    unsigned char* dec = new unsigned char[size];
-    for (unsigned long i = 0; i < size; ++i) {
-        unsigned char b  = enc[i];
-        unsigned char bx = (unsigned char)(b ^ K);  // deshacer XOR
-        unsigned char br = ror8(bx, rot_n);         // rotación inversa
-        dec[i] = br;
+    /**
+ * Función: rle_descomprimir
+ * Descripción: Descomprime un arreglo de bytes RLE.
+ * Parámetros:
+ *   - datos: arreglo de bytes ya desencriptados (XOR + rotación)
+ *   - tam: tamaño del arreglo
+ *   - tam_descomprimido: variable por referencia para devolver tamaño del resultado
+ * Retorno:
+ *   - puntero a arreglo dinámico con el contenido descomprimido
+ */
+    unsigned char* rle_descomprimir(const unsigned char* datos, long tam, long &tam_descomprimido) {
+    // Calcular tamaño total del mensaje descomprimido
+    long total = 0;
+    for (long i = 0; i + 1 < tam; i += 2) {
+        total += datos[i]; // primer byte = count
     }
-    return dec;
-}
 
-char* decompress_lz78(const unsigned char* data, unsigned long size) {
-    if (!data || size < 3) return nullptr;
+    // Reservar memoria dinámica para el resultado
+    unsigned char* resultado = new unsigned char[total];
 
-    unsigned long maxEntries = (size / 3) + 8;
-    char** dict = new char*[maxEntries];
-    unsigned long* dlen = new unsigned long[maxEntries];
-    for (unsigned long i = 0; i < maxEntries; ++i) { dict[i] = 0; dlen[i] = 0; }
-
-    unsigned long dictCount = 0, pos = 0, totalLen = 0;
-
-    while (pos + 2 < size) {
-        unsigned char hi = data[pos];
-        unsigned char lo = data[pos + 1];
-        unsigned short idx = (unsigned short)((hi << 8) | lo); // big-endian
-        unsigned char c = data[pos + 2];
-        pos += 3;
-
-        if (idx == 0) {
-            char* s = new char[2];
-            s[0] = (char)c; s[1] = '\0';
-            dict[dictCount] = s; dlen[dictCount] = 1;
-            totalLen += 1; dictCount++;
-        } else {
-            if ((unsigned long)idx > dictCount) {
-                for (unsigned long i=0;i<dictCount;++i) delete[] dict[i];
-                delete[] dict; delete[] dlen;
-                return nullptr;
-            }
-            unsigned long plen = dlen[idx - 1];
-            char* s = new char[plen + 2]; // +1 char + '\0'
-            my_memcpy(s, dict[idx - 1], plen);
-            s[plen] = (char)c; s[plen + 1] = '\0';
-            dict[dictCount] = s; dlen[dictCount] = plen + 1;
-            totalLen += (plen + 1); dictCount++;
+    // Llenar el resultado con los valores repetidos
+    long pos = 0;
+    for (long i = 0; i + 1 < tam; i += 2) {
+        unsigned char count = datos[i];   // cantidad de repeticiones
+        unsigned char valor = datos[i + 1]; // valor a repetir
+        for (int j = 0; j < count; j++) {
+            resultado[pos++] = valor;
         }
-        if (dictCount >= maxEntries - 2) break;
     }
 
-    if (totalLen == 0) {
-        delete[] dlen; delete[] dict;
-        return nullptr;
-    }
-
-    char* out = new char[totalLen + 1];
-    unsigned long op = 0;
-    for (unsigned long i = 0; i < dictCount; ++i) {
-        my_memcpy(out + op, dict[i], dlen[i]);
-        op += dlen[i];
-        delete[] dict[i];
-    }
-    out[op] = '\0';
-    delete[] dict; delete[] dlen;
-    return out;
+    tam_descomprimido = total; // devolver tamaño total
+    return resultado;
 }
 
-
-
-
+// Ejemplo de uso desde main
 int main() {
+    // Supongamos que ya tenemos los datos desencriptados
+    unsigned char datosRLE[] = {3, 'A', 2, 'B', 4, 'C'}; // ejemplo RLE
+    long tam = sizeof(datosRLE);
+    long tam_descomprimido;
 
+    unsigned char* resultado = rle_descomprimir(datosRLE, tam, tam_descomprimido);
+
+    // Imprimir resultado
+    cout << "Mensaje descomprimido: ";
+    for (long i = 0; i < tam_descomprimido; i++) {
+        cout << resultado[i];
+    }
+    cout << endl;
+
+    delete[] resultado; // liberar memoria
     return 0;
 }
