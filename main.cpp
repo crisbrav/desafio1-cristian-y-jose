@@ -15,7 +15,7 @@ int comparar_n_chars(const char* a, const char* b, unsigned long n) {
     }
     return 0;
 }
-void* copia_bytes(void* dst, const void* src, unsigned long n) {
+void* my_memcpy(void* dst, const void* src, unsigned long n) {
     unsigned char* d = (unsigned char*)dst;
     const unsigned char* s = (const unsigned char*)src;
     for (unsigned long i = 0; i < n; ++i) d[i] = s[i];
@@ -142,7 +142,7 @@ char* decomprimir_lz78(const unsigned char* data, unsigned long size) {
             }
             unsigned long plen = dlen[idx-1];
             char* s = new char[plen + 2];
-            copia_bytes(s, dict[idx-1], plen);
+            my_memcpy(s, dict[idx-1], plen);
             s[plen]=(char)c; s[plen+1]='\0';
             dict[dictCount]=s; dlen[dictCount]=plen+1;
             totalLen += (plen+1); dictCount++;
@@ -154,7 +154,7 @@ char* decomprimir_lz78(const unsigned char* data, unsigned long size) {
 
     char* out = new char[totalLen + 1];
     unsigned long op = 0;
-    for (unsigned long i=0;i<dictCount;++i) { copia_bytes(out+op, dict[i], dlen[i]); op += dlen[i]; delete[] dict[i]; }
+    for (unsigned long i=0;i<dictCount;++i) { my_memcpy(out+op, dict[i], dlen[i]); op += dlen[i]; delete[] dict[i]; }
     out[op]='\0';
     delete[] dict; delete[] dlen;
     return out;
